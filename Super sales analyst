@@ -1,0 +1,371 @@
+# Superstore-sales-analsyt-
+Analyzed retail sales data using Python, Pandas, and Matplotlib to perform data cleaning, exploratory data analysis (EDA), identify sales trends and patterns, and forecast future sales to support data-driven business decisio
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superstore Sales Analytics — H1 2015</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1720;
+    --panel:#16212c;
+    --panel-2:#1c2a37;
+    --line:#28394a;
+    --ink:#e8edf2;
+    --ink-dim:#8ea3b5;
+    --teal:#3fb8af;
+    --amber:#e0a458;
+    --coral:#d9705f;
+    --violet:#8b7fd9;
+    --pos:#5fb88f;
+    --neg:#d9705f;
+    font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  }
+  @font-face{
+    font-family:'IBM Plex Sans';
+    src: local('Arial');
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    padding:0 0 60px;
+  }
+  header{
+    padding:36px clamp(20px,5vw,64px) 24px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  header .title-block{max-width:640px;}
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(24px,3vw,32px);
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  header p{
+    margin:0;
+    color:var(--ink-dim);
+    font-size:14px;
+    line-height:1.6;
+  }
+  .period{
+    font-size:13px;
+    color:var(--ink-dim);
+    border:1px solid var(--line);
+    padding:8px 14px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  main{
+    padding:32px clamp(20px,5vw,64px);
+    display:flex;
+    flex-direction:column;
+    gap:28px;
+  }
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+    gap:14px;
+  }
+  .kpi{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:18px 20px;
+  }
+  .kpi .label{font-size:12.5px;color:var(--ink-dim);margin-bottom:8px;}
+  .kpi .value{font-size:24px;font-weight:600;letter-spacing:-0.01em;}
+  .kpi .value.pos{color:var(--pos);}
+  .kpi .value.neg{color:var(--neg);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(12,1fr);
+    gap:18px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:20px 22px 16px;
+    min-width:0;
+  }
+  .card h2{
+    margin:0 0 2px;
+    font-size:15px;
+    font-weight:600;
+  }
+  .card .sub{
+    font-size:12.5px;
+    color:var(--ink-dim);
+    margin:0 0 14px;
+  }
+  .span-8{grid-column:span 8;}
+  .span-4{grid-column:span 4;}
+  .span-6{grid-column:span 6;}
+  .span-12{grid-column:span 12;}
+  .chart-wrap{position:relative;width:100%;}
+  .h-260{height:260px;}
+  .h-220{height:220px;}
+  .h-300{height:300px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);}
+  th{color:var(--ink-dim);font-weight:500;font-size:12px;text-transform:none;}
+  td.num, th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr:last-child td{border-bottom:none;}
+  .neg-text{color:var(--neg);}
+  .pos-text{color:var(--pos);}
+
+  .note{
+    font-size:12.5px;
+    color:var(--ink-dim);
+    line-height:1.6;
+    border-top:1px solid var(--line);
+    margin-top:20px;
+    padding-top:16px;
+  }
+
+  @media (max-width: 900px){
+    .span-8,.span-4,.span-6{grid-column:span 12;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>Superstore Sales Analytics</h1>
+    <p>1,952 order lines · 1,365 orders · 1,130 customers across the US, Jan–Jun 2015. Built from raw transaction data to surface where revenue and profit actually come from.</p>
+  </div>
+  <div class="period">Jan 1 – Jun 30, 2015</div>
+</header>
+
+<main>
+
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <div class="grid">
+    <div class="card span-8">
+      <h2>Sales &amp; profit by month</h2>
+      <p class="sub">Monthly revenue trended up despite a dip in March; profit stayed thin in Jan and Mar.</p>
+      <div class="chart-wrap h-260"><canvas id="monthlyChart"></canvas></div>
+    </div>
+    <div class="card span-4">
+      <h2>Sales by region</h2>
+      <p class="sub">South is the only region running at a net loss.</p>
+      <div class="chart-wrap h-260"><canvas id="regionChart"></canvas></div>
+    </div>
+
+    <div class="card span-4">
+      <h2>Category mix</h2>
+      <p class="sub">Share of total sales.</p>
+      <div class="chart-wrap h-220"><canvas id="categoryChart"></canvas></div>
+    </div>
+    <div class="card span-4">
+      <h2>Customer segment</h2>
+      <p class="sub">Sales vs. profit contributed.</p>
+      <div class="chart-wrap h-220"><canvas id="segmentChart"></canvas></div>
+    </div>
+    <div class="card span-4">
+      <h2>Ship mode usage</h2>
+      <p class="sub">Order count by shipping method.</p>
+      <div class="chart-wrap h-220"><canvas id="shipChart"></canvas></div>
+    </div>
+
+    <div class="card span-6">
+      <h2>Top 10 sub-categories by sales</h2>
+      <div class="chart-wrap h-300"><canvas id="subcatChart"></canvas></div>
+    </div>
+    <div class="card span-6">
+      <h2>Sub-categories losing the most money</h2>
+      <p class="sub">Combined loss from orders where profit was negative.</p>
+      <div class="chart-wrap h-300"><canvas id="lossChart"></canvas></div>
+    </div>
+
+    <div class="card span-6">
+      <h2>Top 10 products by sales</h2>
+      <table id="productsTable"></table>
+    </div>
+    <div class="card span-6">
+      <h2>Top 10 customers by sales</h2>
+      <table id="customersTable"></table>
+    </div>
+  </div>
+
+  <div class="note" id="dataNote"></div>
+
+</main>
+
+<script>
+const DATA = {"kpi": {"total_sales": 1924337.88, "total_profit": 224077.61, "total_orders": 1365, "total_customers": 1130, "avg_order_value": 1409.77, "profit_margin_pct": 11.64}, "monthly": [{"Order Date": "2015-01", "Sales": 274766.92, "Profit": 1043.6774996999995}, {"Order Date": "2015-02", "Sales": 326101.47, "Profit": 35944.6587805}, {"Order Date": "2015-03", "Sales": 271696.67, "Profit": 103.15958669999969}, {"Order Date": "2015-04", "Sales": 389831.95, "Profit": 53146.4125}, {"Order Date": "2015-05", "Sales": 306572.07, "Profit": 67002.73285839999}, {"Order Date": "2015-06", "Sales": 355368.8, "Profit": 66836.97061}], "region": [{"Region": "East", "Sales": 592171.49, "Profit": 85291.403446, "Orders": 323}, {"Region": "West", "Sales": 526776.57, "Profit": 75844.7901, "Orders": 336}, {"Region": "Central", "Sales": 448284.7, "Profit": 77365.4726686, "Orders": 400}, {"Region": "South", "Sales": 357105.12, "Profit": -14424.054379299998, "Orders": 326}], "category": [{"Product Category": "Technology", "Sales": 712264.95, "Profit": 75303.156362}, {"Product Category": "Furniture", "Sales": 660704.31, "Profit": 59249.4459363}, {"Product Category": "Office Supplies", "Sales": 551368.62, "Profit": 89525.00953699999}], "subcat": [{"Product Sub-Category": "Office Machines", "Sales": 318169.68, "Profit": 8824.390561999999}, {"Product Sub-Category": "Chairs & Chairmats", "Sales": 261072.73, "Profit": 48695.8366}, {"Product Sub-Category": "Telephones and Communication", "Sales": 198764.49, "Profit": 40790.514240000004}, {"Product Sub-Category": "Tables", "Sales": 193764.58, "Profit": -7240.0713637}, {"Product Sub-Category": "Binders and Binder Accessories", "Sales": 185928.14, "Profit": 59296.38943}, {"Product Sub-Category": "Storage & Organization", "Sales": 177417.6, "Profit": 7124.2882}, {"Product Sub-Category": "Bookcases", "Sales": 107796.09, "Profit": -930.4384000000011}, {"Product Sub-Category": "Copiers and Fax", "Sales": 99069.48, "Profit": 23990.20758}, {"Product Sub-Category": "Office Furnishings", "Sales": 98070.91, "Profit": 18724.1191}, {"Product Sub-Category": "Computer Peripherals", "Sales": 96261.3, "Profit": 1698.0439799999997}], "segment": [{"Customer Segment": "Corporate", "Sales": 657784.53, "Profit": 54444.191002399995}, {"Customer Segment": "Home Office", "Sales": 464481.04, "Profit": 54433.5208689}, {"Customer Segment": "Consumer", "Sales": 401778.37, "Profit": 49894.9902726}, {"Customer Segment": "Small Business", "Sales": 400293.94, "Profit": 65304.909691400004}], "shipmode": [{"Ship Mode": "Delivery Truck", "Orders": 262, "Sales": 789235.46}, {"Ship Mode": "Express Air", "Orders": 229, "Sales": 145050.22}, {"Ship Mode": "Regular Air", "Orders": 1093, "Sales": 990052.2}], "priority": [{"Order Priority": "Critical", "Orders": 277}, {"Order Priority": "High", "Orders": 270}, {"Order Priority": "Low", "Orders": 278}, {"Order Priority": "Medium", "Orders": 263}, {"Order Priority": "Not Specified", "Orders": 280}], "top_products": [{"Product Name": "Fellowes PB500 Electric Punch Plastic Comb Binding Machine with Manual Bind", "Sales": 69013.48000000001, "Profit": 23865.9042}, {"Product Name": "Lexmark 4227 Plus Dot Matrix Printer", "Sales": 61071.729999999996, "Profit": 3700.3742}, {"Product Name": "Global Troy\u0099 Executive Leather Low-Back Tilter", "Sales": 50871.21, "Profit": 18628.1453}, {"Product Name": "Okidata ML395C Color Dot Matrix Printer", "Sales": 47611.09, "Profit": 7709.3099999999995}, {"Product Name": "Polycom ViewStation\u0099 ISDN Videoconferencing Unit", "Sales": 46538.69, "Profit": -27621.24541}, {"Product Name": "Economy Rollaway Files", "Sales": 35607.28, "Profit": 2481.442}, {"Product Name": "Smead Adjustable Mobile File Trolley with Lockable Top", "Sales": 23995.11, "Profit": 9906.6199}, {"Product Name": "Hon 4700 Series Mobuis\u0099 Mid-Back Task Chairs with Adjustable Arms", "Sales": 22554.43, "Profit": 5128.18}, {"Product Name": "SAFCO PlanMaster Heigh-Adjustable Drafting Table Base, 43w x 30d x 30-37h, Black", "Sales": 21253.25, "Profit": 846.5679}, {"Product Name": "Riverside Palais Royal Lawyers Bookcase, Royale Cherry Finish", "Sales": 20915.17, "Profit": -4612.1414}], "top_customers": [{"Customer Name": "Kristine Connolly", "Sales": 50475.31}, {"Customer Name": "Nina Horne Kelly", "Sales": 48295.12}, {"Customer Name": "Toni Swanson", "Sales": 32194.12}, {"Customer Name": "Rosemary O'Brien", "Sales": 29916.01}, {"Customer Name": "Yvonne Mann", "Sales": 28779.129999999997}, {"Customer Name": "Lee Xu", "Sales": 20640.35}, {"Customer Name": "Erin Ballard", "Sales": 20565.99}, {"Customer Name": "Tammy Raynor", "Sales": 18642.71}, {"Customer Name": "Neal Wolfe", "Sales": 17390.239999999998}, {"Customer Name": "Andrew Levine", "Sales": 16792.21}], "state": [{"State or Province": "California", "Sales": 288310.61}, {"State or Province": "New York", "Sales": 223930.48}, {"State or Province": "Illinois", "Sales": 98971.25}, {"State or Province": "Texas", "Sales": 93082.73}, {"State or Province": "Florida", "Sales": 87651.11}, {"State or Province": "Washington", "Sales": 83468.06}, {"State or Province": "Michigan", "Sales": 69641.81}, {"State or Province": "Ohio", "Sales": 69452.82}, {"State or Province": "District of Columbia", "Sales": 68946.66}, {"State or Province": "Massachusetts", "Sales": 59114.82}], "loss_products": [{"Product Sub-Category": "Office Machines", "Loss": -67907.124698, "Count": 44}, {"Product Sub-Category": "Telephones and Communication", "Loss": -34631.5205, "Count": 73}, {"Product Sub-Category": "Tables", "Loss": -31184.4156801, "Count": 57}, {"Product Sub-Category": "Bookcases", "Loss": -22389.9222, "Count": 29}, {"Product Sub-Category": "Storage & Organization", "Loss": -21329.1775, "Count": 79}, {"Product Sub-Category": "Chairs & Chairmats", "Loss": -18294.050900000002, "Count": 34}, {"Product Sub-Category": "Computer Peripherals", "Loss": -18034.543700000002, "Count": 96}, {"Product Sub-Category": "Paper", "Loss": -15279.9625, "Count": 157}, {"Product Sub-Category": "Office Furnishings", "Loss": -14593.156, "Count": 76}, {"Product Sub-Category": "Appliances", "Loss": -10335.6, "Count": 54}]};
+
+const fmtMoney = n => '$' + Math.round(n).toLocaleString('en-US');
+const fmtMoneyFull = n => '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+Chart.defaults.color = '#8ea3b5';
+Chart.defaults.font.family = "'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.borderColor = '#28394a';
+
+const palette = ['#3fb8af','#e0a458','#d9705f','#8b7fd9','#5fb88f','#d9b13f'];
+
+// KPI row
+const kpi = DATA.kpi;
+const kpis = [
+  {label:'Total sales', value: fmtMoney(kpi.total_sales)},
+  {label:'Total profit', value: fmtMoney(kpi.total_profit), cls: kpi.total_profit>=0?'pos':'neg'},
+  {label:'Profit margin', value: kpi.profit_margin_pct + '%'},
+  {label:'Orders', value: kpi.total_orders.toLocaleString()},
+  {label:'Customers', value: kpi.total_customers.toLocaleString()},
+  {label:'Avg order value', value: fmtMoney(kpi.avg_order_value)},
+];
+document.getElementById('kpiRow').innerHTML = kpis.map(k =>
+  `<div class="kpi"><div class="label">${k.label}</div><div class="value ${k.cls||''}">${k.value}</div></div>`
+).join('');
+
+// Monthly chart
+const months = DATA.monthly.map(m => m['Order Date']);
+new Chart(document.getElementById('monthlyChart'), {
+  type:'bar',
+  data:{
+    labels: months,
+    datasets:[
+      {type:'bar', label:'Sales', data: DATA.monthly.map(m=>m.Sales), backgroundColor:'#3fb8af88', borderRadius:4, order:2, yAxisID:'y'},
+      {type:'line', label:'Profit', data: DATA.monthly.map(m=>m.Profit), borderColor:'#e0a458', backgroundColor:'#e0a458', tension:0.35, borderWidth:2.5, pointRadius:3, order:1, yAxisID:'y1'}
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'top', align:'end', labels:{boxWidth:10,usePointStyle:true}}},
+    scales:{
+      y:{grid:{color:'#28394a'}, ticks:{callback:v=>fmtMoney(v)}},
+      y1:{position:'right', grid:{display:false}, ticks:{callback:v=>fmtMoney(v)}}
+    }
+  }
+});
+
+// Region chart
+new Chart(document.getElementById('regionChart'), {
+  type:'bar',
+  data:{
+    labels: DATA.region.map(r=>r.Region),
+    datasets:[{data: DATA.region.map(r=>r.Sales), backgroundColor: DATA.region.map((r,i)=>palette[i]), borderRadius:5}]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.raw)}}},
+    scales:{x:{grid:{color:'#28394a'}, ticks:{callback:v=>fmtMoney(v)}}, y:{grid:{display:false}}}
+  }
+});
+
+// Category donut
+new Chart(document.getElementById('categoryChart'), {
+  type:'doughnut',
+  data:{
+    labels: DATA.category.map(c=>c['Product Category']),
+    datasets:[{data: DATA.category.map(c=>c.Sales), backgroundColor:[palette[0],palette[1],palette[2]], borderColor:'#16212c', borderWidth:2}]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false, cutout:'62%',
+    plugins:{legend:{position:'bottom', labels:{boxWidth:10,usePointStyle:true,padding:12}}, tooltip:{callbacks:{label:c=>c.label+': '+fmtMoney(c.raw)}}}
+  }
+});
+
+// Segment grouped bar
+new Chart(document.getElementById('segmentChart'), {
+  type:'bar',
+  data:{
+    labels: DATA.segment.map(s=>s['Customer Segment']),
+    datasets:[
+      {label:'Sales', data: DATA.segment.map(s=>s.Sales), backgroundColor:'#3fb8af', borderRadius:4},
+      {label:'Profit', data: DATA.segment.map(s=>s.Profit), backgroundColor:'#e0a458', borderRadius:4}
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom', labels:{boxWidth:10,usePointStyle:true}}},
+    scales:{y:{grid:{color:'#28394a'}, ticks:{callback:v=>fmtMoney(v)}}, x:{grid:{display:false}, ticks:{font:{size:10.5}}}}
+  }
+});
+
+// Ship mode
+new Chart(document.getElementById('shipChart'), {
+  type:'pie',
+  data:{
+    labels: DATA.shipmode.map(s=>s['Ship Mode']),
+    datasets:[{data: DATA.shipmode.map(s=>s.Orders), backgroundColor:[palette[3],palette[4],palette[5]], borderColor:'#16212c', borderWidth:2}]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom', labels:{boxWidth:10,usePointStyle:true,padding:12}}}
+  }
+});
+
+// Subcat horizontal bar
+new Chart(document.getElementById('subcatChart'), {
+  type:'bar',
+  data:{
+    labels: DATA.subcat.map(s=>s['Product Sub-Category']),
+    datasets:[{data: DATA.subcat.map(s=>s.Sales), backgroundColor:'#3fb8af', borderRadius:4}]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtMoney(c.raw)}}},
+    scales:{x:{grid:{color:'#28394a'}, ticks:{callback:v=>fmtMoney(v)}}, y:{grid:{display:false}, ticks:{font:{size:11}}}}
+  }
+});
+
+// Loss chart
+new Chart(document.getElementById('lossChart'), {
+  type:'bar',
+  data:{
+    labels: DATA.loss_products.map(s=>s['Product Sub-Category']),
+    datasets:[{data: DATA.loss_products.map(s=>Math.abs(s.Loss)), backgroundColor:'#d9705f', borderRadius:4}]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>'-'+fmtMoney(c.raw)}}},
+    scales:{x:{grid:{color:'#28394a'}, ticks:{callback:v=>fmtMoney(v)}}, y:{grid:{display:false}, ticks:{font:{size:11}}}}
+  }
+});
+
+// Tables
+function buildTable(el, rows, cols){
+  const thead = '<thead><tr>' + cols.map(c=>`<th class="${c.num?'num':''}">${c.label}</th>`).join('') + '</tr></thead>';
+  const tbody = '<tbody>' + rows.map(r => '<tr>' + cols.map(c=>{
+    let v = r[c.key];
+    if(c.money) v = fmtMoneyFull(v);
+    const cls = c.money && r[c.rawKey||c.key] < 0 ? 'neg-text' : (c.money ? 'pos-text' : '');
+    return `<td class="${c.num?'num':''} ${cls}">${v}</td>`;
+  }).join('') + '</tr>').join('');
+  el.innerHTML = thead + tbody;
+}
+
+buildTable(document.getElementById('productsTable'), DATA.top_products, [
+  {key:'Product Name', label:'Product'},
+  {key:'Sales', label:'Sales', num:true, money:true},
+  {key:'Profit', label:'Profit', num:true, money:true},
+]);
+
+buildTable(document.getElementById('customersTable'), DATA.top_customers, [
+  {key:'Customer Name', label:'Customer'},
+  {key:'Sales', label:'Sales', num:true, money:true},
+]);
+
+document.getElementById('dataNote').innerHTML =
+  'Data cleaning: 16 missing Product Base Margin values imputed with the column median; inconsistent "Critical " label (trailing whitespace) normalized to "Critical"; Order Date / Ship Date parsed to datetime. Source: row_data.csv, 1,952 line items.';
+</script>
+
+</body>
+</html>
+
+
